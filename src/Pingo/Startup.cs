@@ -20,6 +20,13 @@ namespace Pingo
             services.AddControllers();
             services.AddRazorPages();
             services.AddSignalR();
+
+            services.AddCors(options => {
+                options.AddPolicy("frontend", policy => {
+                    policy.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader()
+                        .AllowCredentials();
+                });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -29,6 +36,8 @@ namespace Pingo
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseCors("frontend");
 
             app.UseStaticFiles();
 
