@@ -45,7 +45,6 @@ namespace Pingo
             
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapRazorPages();
                 endpoints.MapDefaultControllerRoute();
                 endpoints.MapHub<ChatHub>("/ChatHub");
             });
