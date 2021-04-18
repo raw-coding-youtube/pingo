@@ -20,14 +20,24 @@ namespace Pingo.Hubs
                 // ToDo: Break here, don't send a message to everyone
                 await Clients.User(Context.User.Identity.Name).SendAsync("ReceiveMessage", user, message);
             }
-           
+
             // Client.All should send the command "ReceiveMessage" to all clients ==> it will aslo send it to itself
             await Clients.All.SendAsync("ReceiveMessage", user, message);
         }
 
-        public async Task SendCoordinate(int startClientX,int startClientY,int finshClientX,int finshClientY)
+        public async Task SendCoordinate(
+            int x,
+            int y,
+            string color,
+            int pickerValue
+            )
         {
-            await Clients.All.SendAsync("ReceiveCoordinate",startClientX,startClientY,finshClientX,finshClientY);
+            await Clients.All.SendAsync("ReceiveCoordinate", x, y, color, pickerValue);
+        }
+        public async Task SendClearEvent()
+        {
+            await Clients.All.SendAsync("ReceiveClearEvent");
+
         }
     }
 }
