@@ -26,13 +26,15 @@ namespace Pingo.Hubs
         }
 
         public async Task SendCoordinate(
-            int x,
-            int y,
+            int xStartPosition,
+            int yStartPosition,
+            int toX,
+            int toY,
             string color,
             int pickerValue
             )
         {
-            await Clients.All.SendAsync("ReceiveCoordinate", x, y, color, pickerValue);
+            await Clients.All.SendAsync("ReceiveCoordinate", xStartPosition, yStartPosition, toX, toY, color, pickerValue);
         }
         public async Task SendClearEvent()
         {
