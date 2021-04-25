@@ -1,21 +1,11 @@
 <template>
   <div>
     <CanvasComponent
-      :color="color"
-      :pickerValue="pickerValue"
-      @SendCoordinate="sendCoordinate"
+      @paint="sendCoordinate"
       @InitCanvas="initCanvas"
+      @clearCanvas="clearCanvas"
     />
-    <div>
-      <button @click="clearCanvas">clear</button>
-      <input ref="colorBtn" type="color" v-model="color" />
-      <input type="range" min="1" max="100" v-model="pickerValue" />
-    </div>
   </div>
-  <p>
-    X-Coordinate: {{ screenX }}, Y-Coordinate: {{ screenY }}, Colour:
-    {{ color }}
-  </p>
 </template>
 
 <script>
@@ -28,12 +18,8 @@ export default {
   data() {
     return {
       count: 0,
-      screenX: 0,
-      screenY: 0,
       clicked: false,
       connection: null,
-      color: "black",
-      pickerValue: 1,
       canvasFunctions: null,
     };
   },
@@ -50,7 +36,6 @@ export default {
   },
   methods: {
     clearCanvas() {
-      this.canvasFunctions.clear();
       this.connection.invoke("SendClearEvent");
     },
     sendCoordinate(data) {
