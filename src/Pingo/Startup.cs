@@ -18,11 +18,12 @@ namespace Pingo
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddRazorPages();
             services.AddSignalR();
-
-            services.AddCors(options => {
-                options.AddPolicy("frontend", policy => {
+            services.AddSingleton<RoomManager>();
+            services.AddCors(options =>
+            {
+                options.AddPolicy("frontend", policy =>
+                {
                     policy.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader()
                         .AllowCredentials();
                 });
@@ -42,12 +43,26 @@ namespace Pingo
             app.UseStaticFiles();
 
             app.UseRouting();
-            
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapDefaultControllerRoute();
                 endpoints.MapHub<ChatHub>("/ChatHub");
             });
         }
+    }
+
+    public class Room
+    {
+        public int Id { get; set; }
+        public List<string> Users { get; set; }
+    }
+    public class RoomManager
+    {
+        public RoomManager()
+        {
+            Rooms = new List<Room>();
+        }
+        public List<Room> Rooms { get; set; }
     }
 }
