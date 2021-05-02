@@ -56,6 +56,11 @@ namespace Pingo
     {
         public int Id { get; set; }
         public List<string> Users { get; set; }
+
+        public Room()
+        {
+            Users = new List<string>();
+        }
     }
     public class RoomManager
     {

@@ -3,8 +3,8 @@
     <CanvasComponent
       v-if="roomId > 0"
       @paint="sendCoordinate"
-      @InitCanvas="initCanvas"
       @clearCanvas="clearCanvas"
+      @InitCanvas="initCanvas"
     />
     <form id="roomForm" @submit.prevent="createRoom">
       <label>Id:</label>
@@ -12,7 +12,16 @@
 
       <button type="submit">Create Room</button>
     </form>
-    <div v-for="room in rooms" :key="room.id">{{ room }}</div>
+    <div>
+      <select v-model="selectedRoomId">
+        <option v-for="room in rooms" :key="room.id">{{ room.id }}</option>
+      </select>
+      {{ selectedRoomId }}
+      <button type="submit" @click="joinRoom">Join room</button>
+    </div>
+    <div v-for="room in rooms" :key="room.id">
+      <a href="#">{{ room }}</a>
+    </div>
   </div>
 </template>
 
@@ -32,6 +41,7 @@ export default {
       connection: null,
       canvasFunctions: null,
       newRoomId: 0,
+      selectedRoomId: null,
       rooms: [],
     };
   },
@@ -43,19 +53,22 @@ export default {
       .withUrl("http://localhost:7000/ChatHub")
       .build();
 
-    this.connection.on("ReceiveCoordinate", this.canvasFunctions.draw);
+    // this.connection.on("ReceiveCoordinate", this.canvasFunctions.draw);
 
-    this.connection.on("ReceiveClearEvent", this.canvasFunctions.clear);
+    // this.connection.on("ReceiveClearEvent", this.canvasFunctions.clear);
+
+    this.connection.on("JoinResponse", this.joinResponse);
 
     this.connection.start();
   },
   methods: {
     clearCanvas() {
-      this.connection.invoke("SendClearEvent");
+      this.connection.invoke("SendClearEvent", this.roomId);
     },
     sendCoordinate(data) {
       this.connection.invoke(
         "SendCoordinate",
+        this.roomId,
         data.xStartPosition,
         data.yStartPosition,
         data.toX,
@@ -66,6 +79,10 @@ export default {
     },
     initCanvas(canvasFunctions) {
       this.canvasFunctions = canvasFunctions;
+
+      this.connection.on("ReceiveCoordinate", this.canvasFunctions.draw);
+
+      this.connection.on("ReceiveClearEvent", this.canvasFunctions.clear);
     },
     createRoom() {
       console.log(this.newRoomId);
@@ -78,10 +95,21 @@ export default {
         .get("http://localhost:7000/api/rooms")
         .then((res) => {
           this.rooms = res.data;
+          if (this.rooms.length > 0) {
+            this.selectedRoomId = this.rooms[0].id;
+          }
         })
         .catch((err) => {
           console.error(err);
         });
+    },
+    joinRoom() {
+      console.log("joinRoom", this.selectedRoomId);
+      this.connection.invoke("JoinRoom", parseInt(this.selectedRoomId));
+    },
+    joinResponse(roomId) {
+      console.log("joined room", roomId);
+      this.roomId = roomId;
     },
   },
 };

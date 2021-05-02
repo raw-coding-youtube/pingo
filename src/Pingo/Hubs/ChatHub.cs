@@ -1,31 +1,23 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Pingo.Hubs
 {
     public class ChatHub : Hub
     {
-        /// <summary>
-        /// Checks if message message is correct and
-        /// Will send a message to all clients
-        /// </summary>
-        public async Task SendMessage(string user, string message)
+        private readonly RoomManager _manager;
+        private readonly ILogger<ChatHub> _logger;
+        public ChatHub(RoomManager manager, ILogger<ChatHub> logger)
         {
-            const string correctMessage = "hello";
-
-            if (message == correctMessage)
-            {
-                // Right now only returns the same message, so the user who did it correct will see it twice
-                // ToDo: Implement a new function for tchecked client
-                // ToDo: Break here, don't send a message to everyone
-                await Clients.User(Context.User.Identity.Name).SendAsync("ReceiveMessage", user, message);
-            }
-
-            // Client.All should send the command "ReceiveMessage" to all clients ==> it will aslo send it to itself
-            await Clients.All.SendAsync("ReceiveMessage", user, message);
+            _manager = manager;
+            _logger = logger;
         }
 
-        public async Task SendCoordinate(
+        public Task SendCoordinate(
+            int roomId,
             int xStartPosition,
             int yStartPosition,
             int toX,
@@ -34,12 +26,30 @@ namespace Pingo.Hubs
             int pickerValue
             )
         {
-            await Clients.All.SendAsync("ReceiveCoordinate", xStartPosition, yStartPosition, toX, toY, color, pickerValue);
+            return Clients.Group(roomId.ToString()).SendAsync("ReceiveCoordinate", xStartPosition, yStartPosition, toX, toY, color, pickerValue);
         }
-        public async Task SendClearEvent()
+        public Task SendClearEvent(int roomId)
         {
-            await Clients.All.SendAsync("ReceiveClearEvent");
+            return Clients.Group(roomId.ToString()).SendAsync("ReceiveClearEvent");
+        }
 
+        public async Task JoinRoom(int id)
+        {
+            try
+            {
+                var room = _manager.Rooms.FirstOrDefault(x => x.Id == id);
+                var userId = Context.ConnectionId;
+
+                room.Users.Add(userId);
+
+                await Groups.AddToGroupAsync(userId, room.Id.ToString());
+
+                await Clients.Caller.SendAsync("JoinResponse", room.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+            }
         }
     }
 }

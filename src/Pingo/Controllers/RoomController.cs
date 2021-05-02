@@ -1,5 +1,7 @@
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Pingo.Hubs;
 
 namespace Pingo.Controllers
 {
@@ -8,10 +10,12 @@ namespace Pingo.Controllers
     public class RoomController : ControllerBase
     {
         private readonly RoomManager _manager;
+        private IHubContext<ChatHub> _chatHub;
 
-        public RoomController(RoomManager manager)
+        public RoomController(RoomManager manager, IHubContext<ChatHub> hub)
         {
             _manager = manager;
+            _chatHub = hub;
         }
 
         [HttpGet]
