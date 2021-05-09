@@ -5,8 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Pingo.CustomAuthR;
 using Pingo.Hubs;
 
 namespace Pingo
@@ -20,6 +22,14 @@ namespace Pingo
             services.AddControllers();
             services.AddSignalR();
             services.AddSingleton<RoomManager>();
+            services.AddSingleton<IUserIdProvider, UserIdProvider>();
+            services.AddAuthentication("my_scheme")
+                .AddCookie("my_scheme", options =>
+                {
+                    options.Cookie.HttpOnly = false;
+                    options.Cookie.Name = "AuthCookie";
+                });
+
             services.AddCors(options =>
             {
                 options.AddPolicy("frontend", policy =>
@@ -41,8 +51,11 @@ namespace Pingo
             app.UseCors("frontend");
 
             app.UseStaticFiles();
-
             app.UseRouting();
+
+            app.UseAuthentication();
+
+            app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {

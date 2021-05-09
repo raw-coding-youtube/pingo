@@ -45,7 +45,37 @@ export default {
       rooms: [],
     };
   },
-  created() {
+  async created() {
+    if (!document.cookie.startsWith("AuthCookie")) {
+      await axios.get(`http://localhost:7000/api/auth`, {
+        withCredentials: true,
+      });
+    }
+
+    this.connection = new HubConnectionBuilder()
+      .withUrl("http://localhost:7000/ChatHub")
+      .build();
+
+    // this.connection.on("ReceiveCoordinate", this.canvasFunctions.draw);
+
+    // this.connection.on("ReceiveClearEvent", this.canvasFunctions.clear);
+
+    this.connection.on("JoinResponse", this.joinResponse);
+
+    await this.connection.start();
+
+    await axios
+      .get(`http://localhost:7000/api/rooms/my`, {
+        withCredentials: true,
+      })
+      .then((res) => {
+        if (res.data) {
+          this.selectedRoomId = res.data.id;
+          this.joinRoom();
+        }
+      });
+
+    console.log(document.cookie);
     this.loadRooms();
   },
   mounted() {

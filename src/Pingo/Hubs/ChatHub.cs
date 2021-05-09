@@ -38,11 +38,14 @@ namespace Pingo.Hubs
             try
             {
                 var room = _manager.Rooms.FirstOrDefault(x => x.Id == id);
-                var userId = Context.ConnectionId;
+                var userId = Context.UserIdentifier;
 
-                room.Users.Add(userId);
+                if (!room.Users.Any(x => x == userId))
+                {
+                    room.Users.Add(userId);
+                }
 
-                await Groups.AddToGroupAsync(userId, room.Id.ToString());
+                await Groups.AddToGroupAsync(Context.ConnectionId, room.Id.ToString());
 
                 await Clients.Caller.SendAsync("JoinResponse", room.Id);
             }
