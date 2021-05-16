@@ -3,6 +3,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Pingo.Hubs;
+using Pingo.Models;
+using Pingo.Services;
 
 namespace Pingo.Controllers
 {

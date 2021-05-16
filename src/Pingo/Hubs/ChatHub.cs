@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Pingo.Services;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -53,6 +54,14 @@ namespace Pingo.Hubs
             {
                 _logger.LogError(ex, ex.Message);
             }
+        }
+
+        public Task GuessWord(string guessWord)
+        {
+            var userId = Context.UserIdentifier;
+            var room = _manager.Rooms.FirstOrDefault(x => x.Users.Contains(userId));
+            bool result = room.Word.Equals(guessWord, StringComparison.InvariantCultureIgnoreCase);
+            return Clients.Group(room.Id.ToString()).SendAsync("GuessWordResponse", guessWord, result);
         }
     }
 }

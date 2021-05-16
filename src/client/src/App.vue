@@ -1,27 +1,37 @@
 <template>
   <div>
-    <CanvasComponent
-      v-if="roomId > 0"
-      @paint="sendCoordinate"
-      @clearCanvas="clearCanvas"
-      @InitCanvas="initCanvas"
-    />
-    <form id="roomForm" @submit.prevent="createRoom">
-      <label>Id:</label>
-      <input type="number" v-model="newRoomId" />
+    <template v-if="roomId > 0">
+      <p>{{ rooms.find((x) => x.id === roomId).word }}</p>
+      <CanvasComponent
+        @paint="sendCoordinate"
+        @clearCanvas="clearCanvas"
+        @InitCanvas="initCanvas"
+      />
 
-      <button type="submit">Create Room</button>
-    </form>
-    <div>
-      <select v-model="selectedRoomId">
-        <option v-for="room in rooms" :key="room.id">{{ room.id }}</option>
-      </select>
-      {{ selectedRoomId }}
-      <button type="submit" @click="joinRoom">Join room</button>
-    </div>
-    <div v-for="room in rooms" :key="room.id">
-      <a href="#">{{ room }}</a>
-    </div>
+      <div v-for="(m, i) in messages" :key="`message-${i}`">
+        <p :class="{ green: m.result }">{{ m.word }}</p>
+      </div>
+      <input v-model="wordGuess" />
+      <button @click="onWordGuess">Send</button>
+    </template>
+    <template v-else>
+      <form id="roomForm" @submit.prevent="createRoom">
+        <label>Id:</label>
+        <input type="number" v-model="newRoomId" />
+
+        <button type="submit">Create Room</button>
+      </form>
+      <div>
+        <select v-model="selectedRoomId">
+          <option v-for="room in rooms" :key="room.id">{{ room.id }}</option>
+        </select>
+        {{ selectedRoomId }}
+        <button type="submit" @click="joinRoom">Join room</button>
+      </div>
+      <div v-for="room in rooms" :key="room.id">
+        <a href="#">{{ room }}</a>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -36,29 +46,19 @@ export default {
   data() {
     return {
       roomId: 0,
-      count: 0,
-      clicked: false,
       connection: null,
       canvasFunctions: null,
       newRoomId: 0,
       selectedRoomId: null,
       rooms: [],
+      wordGuess: "",
+      messages: [],
     };
   },
   async created() {
-    if (!document.cookie.startsWith("AuthCookie")) {
-      await axios.get(`http://localhost:7000/api/auth`, {
-        withCredentials: true,
-      });
-    }
-
     this.connection = new HubConnectionBuilder()
       .withUrl("http://localhost:7000/ChatHub")
       .build();
-
-    // this.connection.on("ReceiveCoordinate", this.canvasFunctions.draw);
-
-    // this.connection.on("ReceiveClearEvent", this.canvasFunctions.clear);
 
     this.connection.on("JoinResponse", this.joinResponse);
 
@@ -75,21 +75,7 @@ export default {
         }
       });
 
-    console.log(document.cookie);
     this.loadRooms();
-  },
-  mounted() {
-    this.connection = new HubConnectionBuilder()
-      .withUrl("http://localhost:7000/ChatHub")
-      .build();
-
-    // this.connection.on("ReceiveCoordinate", this.canvasFunctions.draw);
-
-    // this.connection.on("ReceiveClearEvent", this.canvasFunctions.clear);
-
-    this.connection.on("JoinResponse", this.joinResponse);
-
-    this.connection.start();
   },
   methods: {
     clearCanvas() {
@@ -140,6 +126,13 @@ export default {
     joinResponse(roomId) {
       console.log("joined room", roomId);
       this.roomId = roomId;
+      this.connection.on("GuessWordResponse", this.guessWordResponse);
+    },
+    guessWordResponse(word, result) {
+      this.messages.push({ word, result });
+    },
+    onWordGuess() {
+      this.connection.invoke("GuessWord", this.wordGuess);
     },
   },
 };
@@ -148,5 +141,8 @@ export default {
 <style>
 .canvas {
   border: 1px solid red;
+}
+.green {
+  background-color: green;
 }
 </style>

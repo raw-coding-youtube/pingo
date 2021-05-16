@@ -1,21 +1,16 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Text.Encodings.Web;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pingo.CustomAuthR;
 using Pingo.Hubs;
+using Pingo.Middleware;
+using Pingo.Services;
 
 namespace Pingo
 {
@@ -30,22 +25,19 @@ namespace Pingo
             services.AddSignalR();
             services.AddSingleton<RoomManager>();
             services.AddSingleton<IUserIdProvider, UserIdProvider>();
-            services.AddAuthentication("my_scheme")
-                .AddScheme<CookieAuthenticationOptions, myAuthenticationHandler>("my_scheme", null)
-                .AddCookie("my_cookie", options =>
+
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<CookieAuthenticationOptions>, PostConfigureCookieAuthenticationOptions>());
+            services.AddOptions<CookieAuthenticationOptions>(PingoConstants.AuthScheme)
+                .Validate(o => o.Cookie.Expiration == null, "Cookie.Expiration is ignored, use ExpireTimeSpan instead.");
+
+            services.AddAuthentication(PingoConstants.AuthScheme)
+                .AddScheme<CookieAuthenticationOptions, PingoAuthenticationHandler>(PingoConstants.AuthScheme, options =>
                 {
                     options.Cookie.HttpOnly = false;
                     options.Cookie.Name = "AuthCookie";
                 });
 
-            services.AddCors(options =>
-            {
-                options.AddPolicy("frontend", policy =>
-                {
-                    policy.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader()
-                        .AllowCredentials();
-                });
-            });
+            
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -55,8 +47,6 @@ namespace Pingo
             {
                 app.UseDeveloperExceptionPage();
             }
-
-            app.UseCors("frontend");
 
             app.UseStaticFiles();
             app.UseRouting();
@@ -70,56 +60,14 @@ namespace Pingo
                 endpoints.MapDefaultControllerRoute();
                 endpoints.MapHub<ChatHub>("/ChatHub");
             });
-        }
-    }
 
-    public class myAuthenticationHandler : CookieAuthenticationHandler
-    {
-        public myAuthenticationHandler(
-            IOptionsMonitor<CookieAuthenticationOptions> options,
-            ILoggerFactory logger,
-            UrlEncoder encoder,
-            ISystemClock clock
-            ) : base(options, logger, encoder, clock)
-        {
-        }
-
-        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
-        {
-            var result = await base.HandleAuthenticateAsync();
-            if (result.Succeeded)
+            app.UseSpa(builder =>
             {
-                return result;
-            }
-
-            var guid = Guid.NewGuid().ToString();
-            var claim = new Claim("UserId", guid);
-
-            ClaimsIdentity identity = new ClaimsIdentity(new[] { claim }, "my_scheme");
-            ClaimsPrincipal claimsPrincipal=new ClaimsPrincipal(identity);
-            await Context.SignInAsync("my_scheme", claimsPrincipal);
-            // await HttpContext.SignInAsync("my_scheme", new ClaimsPrincipal(identity));
-            AuthenticationTicket ticket=new AuthenticationTicket(claimsPrincipal,"my_scheme");
-            return AuthenticateResult.Success(ticket);
+                if (env.IsDevelopment())
+                {
+                    builder.UseProxyToSpaDevelopmentServer("http://localhost:8080");
+                }
+            });
         }
-    }
-
-    public class Room
-    {
-        public int Id { get; set; }
-        public List<string> Users { get; set; }
-
-        public Room()
-        {
-            Users = new List<string>();
-        }
-    }
-    public class RoomManager
-    {
-        public RoomManager()
-        {
-            Rooms = new List<Room>();
-        }
-        public List<Room> Rooms { get; set; }
     }
 }
