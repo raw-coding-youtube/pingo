@@ -1,13 +1,12 @@
 <template>
   <div>
     <template v-if="roomId > 0">
-      <p>{{ rooms.find((x) => x.id === roomId).word }}</p>
+      <!-- <p>{{ rooms.find((x) => x.id === roomId).word }}</p> -->
       <CanvasComponent
         @paint="sendCoordinate"
         @clearCanvas="clearCanvas"
         @InitCanvas="initCanvas"
       />
-
       <div v-for="(m, i) in messages" :key="`message-${i}`">
         <p :class="{ green: m.result }">{{ m.word }}</p>
       </div>
@@ -79,19 +78,10 @@ export default {
   },
   methods: {
     clearCanvas() {
-      this.connection.invoke("SendClearEvent", this.roomId);
+      this.connection.invoke("SendClearEvent");
     },
     sendCoordinate(data) {
-      this.connection.invoke(
-        "SendCoordinate",
-        this.roomId,
-        data.xStartPosition,
-        data.yStartPosition,
-        data.toX,
-        data.toY,
-        data.color,
-        data.pickerValue
-      );
+      this.connection.invoke("SendCoordinate", data);
     },
     initCanvas(canvasFunctions) {
       this.canvasFunctions = canvasFunctions;
@@ -99,6 +89,8 @@ export default {
       this.connection.on("ReceiveCoordinate", this.canvasFunctions.draw);
 
       this.connection.on("ReceiveClearEvent", this.canvasFunctions.clear);
+
+      this.connection.invoke("ReDraw");
     },
     createRoom() {
       console.log(this.newRoomId);

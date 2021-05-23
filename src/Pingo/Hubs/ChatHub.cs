@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Pingo.Models;
 using Pingo.Services;
 using System;
 using System.Linq;
@@ -17,28 +18,24 @@ namespace Pingo.Hubs
             _logger = logger;
         }
 
-        public Task SendCoordinate(
-            int roomId,
-            int xStartPosition,
-            int yStartPosition,
-            int toX,
-            int toY,
-            string color,
-            int pickerValue
-            )
+        public Task SendCoordinate(DrawEvent drawEvent)
         {
-            return Clients.Group(roomId.ToString()).SendAsync("ReceiveCoordinate", xStartPosition, yStartPosition, toX, toY, color, pickerValue);
+            var room = _manager.GetRoomByUserId(Context.UserIdentifier);
+            room.DrawEvents.Add(drawEvent);
+            return Clients.Group(room.Id.ToString()).SendAsync("ReceiveCoordinate", drawEvent);
         }
-        public Task SendClearEvent(int roomId)
+        public Task SendClearEvent()
         {
-            return Clients.Group(roomId.ToString()).SendAsync("ReceiveClearEvent");
+            var room = _manager.GetRoomByUserId(Context.UserIdentifier);
+            return Clients.Group(room.Id.ToString()).SendAsync("ReceiveClearEvent");
         }
 
-        public async Task JoinRoom(int id)
+        public async Task JoinRoom(int roomId)
         {
             try
             {
-                var room = _manager.Rooms.FirstOrDefault(x => x.Id == id);
+
+                var room = _manager.Rooms.FirstOrDefault(x => x.Id == roomId);
                 var userId = Context.UserIdentifier;
 
                 if (!room.Users.Any(x => x == userId))
@@ -58,10 +55,18 @@ namespace Pingo.Hubs
 
         public Task GuessWord(string guessWord)
         {
-            var userId = Context.UserIdentifier;
-            var room = _manager.Rooms.FirstOrDefault(x => x.Users.Contains(userId));
+            var room = _manager.GetRoomByUserId(Context.UserIdentifier);
             bool result = room.Word.Equals(guessWord, StringComparison.InvariantCultureIgnoreCase);
             return Clients.Group(room.Id.ToString()).SendAsync("GuessWordResponse", guessWord, result);
+        }
+
+        public async Task ReDraw()
+        {
+            var room = _manager.GetRoomByUserId(Context.UserIdentifier);
+            foreach (var drawEvent in room.DrawEvents)
+            {
+                await Clients.Caller.SendAsync("ReceiveCoordinate", drawEvent);
+            }
         }
     }
 }

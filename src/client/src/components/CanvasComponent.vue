@@ -63,7 +63,6 @@ export default {
       let toX = (this.screenX = event.clientX - this.$refs.mycanvas.offsetLeft);
       let toY = (this.screenY = event.clientY - this.$refs.mycanvas.offsetTop);
       ctx.lineTo(toX, toY);
-      let pickerValue = parseInt(brushSize);
 
       this.$emit("paint", {
         xStartPosition,
@@ -71,7 +70,7 @@ export default {
         toX,
         toY,
         color,
-        pickerValue,
+        brushSize: parseInt(brushSize),
       });
 
       ctx.stroke();
@@ -80,9 +79,9 @@ export default {
   mounted() {
     let canvas = this.$refs.mycanvas;
     this.$emit("InitCanvas", {
-      draw(xStartPosition, yStartPosition, toX, toY, color, pickerValue) {
+      draw({ xStartPosition, yStartPosition, toX, toY, color, brushSize }) {
         var ctx = canvas.getContext("2d");
-        ctx.lineWidth = pickerValue;
+        ctx.lineWidth = brushSize;
         ctx.strokeStyle = color;
         ctx.lineCap = "round";
 
