@@ -1,6 +1,23 @@
 <template>
   <div>
-    <template v-if="roomId > 0">
+    <template v-if="!this.currentRoom">
+      <form id="roomForm" @submit.prevent="createRoom">
+        <label>Id:</label>
+        <input type="number" v-model="newRoomId" />
+
+        <button type="submit">Create Room</button>
+      </form>
+      <div v-for="room in rooms" :key="room.id">
+        <a href="#" @click="joinRoom(room.id)">{{ room.id }}</a>
+      </div>
+    </template>
+    <template v-else-if="!this.currentRoom.started">
+      <div v-for="user in currentRoom.users" :key="user">
+        <a href="#">{{ user }}</a>
+      </div>
+      <button @click="startGame">Start Game</button>
+    </template>
+    <template v-else-if="this.currentRoom.started">
       <!-- <p>{{ rooms.find((x) => x.id === roomId).word }}</p> -->
       <CanvasComponent
         @paint="sendCoordinate"
@@ -12,24 +29,6 @@
       </div>
       <input v-model="wordGuess" />
       <button @click="onWordGuess">Send</button>
-    </template>
-    <template v-else>
-      <form id="roomForm" @submit.prevent="createRoom">
-        <label>Id:</label>
-        <input type="number" v-model="newRoomId" />
-
-        <button type="submit">Create Room</button>
-      </form>
-      <div>
-        <select v-model="selectedRoomId">
-          <option v-for="room in rooms" :key="room.id">{{ room.id }}</option>
-        </select>
-        {{ selectedRoomId }}
-        <button type="submit" @click="joinRoom">Join room</button>
-      </div>
-      <div v-for="room in rooms" :key="room.id">
-        <a href="#">{{ room }}</a>
-      </div>
     </template>
   </div>
 </template>
@@ -44,12 +43,12 @@ export default {
   components: { CanvasComponent },
   data() {
     return {
-      roomId: 0,
+      currentRoom: null,
+      newRoomId: 0,
+      rooms: [],
+
       connection: null,
       canvasFunctions: null,
-      newRoomId: 0,
-      selectedRoomId: null,
-      rooms: [],
       wordGuess: "",
       messages: [],
     };
@@ -63,16 +62,11 @@ export default {
 
     await this.connection.start();
 
-    await axios
-      .get(`http://localhost:7000/api/rooms/my`, {
-        withCredentials: true,
-      })
-      .then((res) => {
-        if (res.data) {
-          this.selectedRoomId = res.data.id;
-          this.joinRoom();
-        }
-      });
+    await this.getMyRoom().then((res) => {
+      if (res.data) {
+        this.joinRoom(res.data.id);
+      }
+    });
 
     this.loadRooms();
   },
@@ -103,21 +97,17 @@ export default {
         .get("http://localhost:7000/api/rooms")
         .then((res) => {
           this.rooms = res.data;
-          if (this.rooms.length > 0) {
-            this.selectedRoomId = this.rooms[0].id;
-          }
         })
         .catch((err) => {
           console.error(err);
         });
     },
-    joinRoom() {
-      console.log("joinRoom", this.selectedRoomId);
-      this.connection.invoke("JoinRoom", parseInt(this.selectedRoomId));
+    joinRoom(roomId) {
+      this.connection.invoke("JoinRoom", parseInt(roomId));
     },
-    joinResponse(roomId) {
-      console.log("joined room", roomId);
-      this.roomId = roomId;
+    joinResponse() {
+      this.getMyRoom();
+      this.connection.on("ReloadRoom", (room) => this.currentRoom = room);
       this.connection.on("GuessWordResponse", this.guessWordResponse);
     },
     guessWordResponse(word, result) {
@@ -126,6 +116,18 @@ export default {
     onWordGuess() {
       this.connection.invoke("GuessWord", this.wordGuess);
     },
+    startGame() {
+      return axios
+        .put(`http://localhost:7000/api/rooms/${this.currentRoom.id}/start`);
+    },
+    getMyRoom() {
+      return axios.get(`http://localhost:7000/api/rooms/my`).then((res) => {
+        if (res.data) {
+          this.currentRoom = res.data;
+        }
+        return res;
+      });
+    }
   },
 };
 </script>

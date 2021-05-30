@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Pingo.Hubs;
@@ -49,6 +50,21 @@ namespace Pingo.Controllers
             return Ok(MyRoom);
         }
 
+        [HttpPut("{id}/start")]
+        public async Task<IActionResult> StartGameAsync(int id)
+        {
+            var room = _manager.Rooms.FirstOrDefault(x => x.Id == id);
+            room.Started = true;
+
+            await _chatHub.Clients.Group(room.Id.ToString()).SendAsync("ReloadRoom", new
+            {
+                roomId = room.Id,
+                users = room.Users,
+                started = room.Started,
+            });
+
+            return Ok();
+        }
     }
 }
 

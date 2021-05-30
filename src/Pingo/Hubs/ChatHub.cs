@@ -27,6 +27,7 @@ namespace Pingo.Hubs
         public Task SendClearEvent()
         {
             var room = _manager.GetRoomByUserId(Context.UserIdentifier);
+            
             return Clients.Group(room.Id.ToString()).SendAsync("ReceiveClearEvent");
         }
 
@@ -45,7 +46,7 @@ namespace Pingo.Hubs
 
                 await Groups.AddToGroupAsync(Context.ConnectionId, room.Id.ToString());
 
-                await Clients.Caller.SendAsync("JoinResponse", room.Id);
+                await Clients.Caller.SendAsync("JoinResponse");
             }
             catch (Exception ex)
             {
