@@ -23,35 +23,13 @@ namespace Pingo.Hubs
             var room = _manager.GetRoomByUserId(Context.UserIdentifier);
             room.DrawEvents.Add(drawEvent);
             return Clients.Group(room.Id.ToString()).SendAsync("ReceiveCoordinate", drawEvent);
+            
         }
         public Task SendClearEvent()
         {
             var room = _manager.GetRoomByUserId(Context.UserIdentifier);
-            
+
             return Clients.Group(room.Id.ToString()).SendAsync("ReceiveClearEvent");
-        }
-
-        public async Task JoinRoom(int roomId)
-        {
-            try
-            {
-
-                var room = _manager.Rooms.FirstOrDefault(x => x.Id == roomId);
-                var userId = Context.UserIdentifier;
-
-                if (!room.Users.Any(x => x == userId))
-                {
-                    room.Users.Add(userId);
-                }
-
-                await Groups.AddToGroupAsync(Context.ConnectionId, room.Id.ToString());
-
-                await Clients.Caller.SendAsync("JoinResponse");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ex.Message);
-            }
         }
 
         public Task GuessWord(string guessWord)

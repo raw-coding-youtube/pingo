@@ -1,6 +1,6 @@
 <template>
   <div>
-    <template v-if="!this.currentRoom">
+    <template v-if="!currentRoom">
       <form id="roomForm" @submit.prevent="createRoom">
         <label>Id:</label>
         <input type="number" v-model="newRoomId" />
@@ -11,13 +11,15 @@
         <a href="#" @click="joinRoom(room.id)">{{ room.id }}</a>
       </div>
     </template>
-    <template v-else-if="!this.currentRoom.started">
+
+    <template v-else-if="!currentRoom.started">
       <div v-for="user in currentRoom.users" :key="user">
         <a href="#">{{ user }}</a>
       </div>
-      <button @click="startGame">Start Game</button>
+      <button v-if="currentRoom.isAdmin" @click="startGame">Start Game</button>
     </template>
-    <template v-else-if="this.currentRoom.started">
+
+    <template v-else-if="currentRoom.started">
       <!-- <p>{{ rooms.find((x) => x.id === roomId).word }}</p> -->
       <CanvasComponent
         @paint="sendCoordinate"
@@ -87,13 +89,20 @@ export default {
       this.connection.invoke("ReDraw");
     },
     createRoom() {
-      console.log(this.newRoomId);
-      axios
-        .post(`http://localhost:7000/api/rooms/${this.newRoomId}`)
-        .then(this.loadRooms);
+      return axios
+        .post(`http://localhost:7000/api/rooms/${this.newRoomId}?connectionId=${this.connection.connectionId}`)
+        .then((res) => {
+          if (res.data) {
+            this.currentRoom = res.data;
+            this.connection.on("ReloadRoom", (room) => {
+              console.log(room);
+              this.currentRoom = room;
+            });
+          }
+        });
     },
     loadRooms() {
-      axios
+      return axios
         .get("http://localhost:7000/api/rooms")
         .then((res) => {
           this.rooms = res.data;
@@ -103,11 +112,21 @@ export default {
         });
     },
     joinRoom(roomId) {
-      this.connection.invoke("JoinRoom", parseInt(roomId));
+      const path = `http://localhost:7000/api/rooms/${roomId}/join?connectionId=${this.connection.connectionId}`;
+      return axios.put(path, null).then((res) => {
+        if (res.data) {
+          this.currentRoom = res.data;
+          this.connection.on("ReloadRoom", (room) => {
+            console.log(room);
+            this.currentRoom = room;
+          });
+        }
+      });
+      //this.connection.invoke("JoinRoom", parseInt(roomId));
     },
     joinResponse() {
       this.getMyRoom();
-      this.connection.on("ReloadRoom", (room) => this.currentRoom = room);
+      this.connection.on("ReloadRoom", (room) => (this.currentRoom = room));
       this.connection.on("GuessWordResponse", this.guessWordResponse);
     },
     guessWordResponse(word, result) {
@@ -117,8 +136,9 @@ export default {
       this.connection.invoke("GuessWord", this.wordGuess);
     },
     startGame() {
-      return axios
-        .put(`http://localhost:7000/api/rooms/${this.currentRoom.id}/start`);
+      return axios.put(
+        `http://localhost:7000/api/rooms/${this.currentRoom.id}/start`
+      );
     },
     getMyRoom() {
       return axios.get(`http://localhost:7000/api/rooms/my`).then((res) => {
@@ -127,7 +147,7 @@ export default {
         }
         return res;
       });
-    }
+    },
   },
 };
 </script>
