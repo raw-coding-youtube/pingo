@@ -18,5 +18,7 @@ namespace Pingo.Models
         public List<DrawEvent> DrawEvents { get; set; }
         public bool Started { get; set; }
         public string Admin => Users.FirstOrDefault();
+
+        public string DrawingUser { get; set; }
     }
 }

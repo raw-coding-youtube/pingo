@@ -20,8 +20,16 @@
     </template>
 
     <template v-else-if="currentRoom.started">
-      <!-- <p>{{ rooms.find((x) => x.id === roomId).word }}</p> -->
+      <div v-for="user in currentRoom.users" :key="user">
+        <a :class="{ green: currentRoom.drawingUser == user }" href="#">{{ user }}</a>
+      </div>
+
+      <div v-if="currentRoom.drawingUser == currentRoom.myUserId">
+        Hide Me If Not My Turn
+      </div>
+     
       <CanvasComponent
+        :hideToolBar="currentRoom.drawingUser != currentRoom.myUserId"
         @paint="sendCoordinate"
         @clearCanvas="clearCanvas"
         @InitCanvas="initCanvas"
@@ -60,17 +68,20 @@ export default {
       .withUrl("http://localhost:7000/ChatHub")
       .build();
 
-    this.connection.on("JoinResponse", this.joinResponse);
-
     await this.connection.start();
 
     await this.getMyRoom().then((res) => {
       if (res.data) {
-        this.joinRoom(res.data.id);
+        this.joinRoom(res.data.roomId);
       }
     });
 
     this.loadRooms();
+  },
+  watch: {
+    currentRoom: function (newRoom) {
+      console.log(newRoom);
+    },
   },
   methods: {
     clearCanvas() {
@@ -88,16 +99,28 @@ export default {
 
       this.connection.invoke("ReDraw");
     },
+    subscribeToRoomEvents() {
+      this.connection.on("UserJoined", (userId) => {
+        console.log(userId);
+        this.currentRoom.users.push(userId);
+      });
+      this.connection.on("GameStarted", () => {
+        this.currentRoom.started = true;
+      });
+      this.connection.on("TurnUpdated", (userId) => {
+        this.currentRoom.drawingUser = userId;
+      });
+
+    },
     createRoom() {
       return axios
-        .post(`http://localhost:7000/api/rooms/${this.newRoomId}?connectionId=${this.connection.connectionId}`)
+        .post(
+          `http://localhost:7000/api/rooms/${this.newRoomId}?connectionId=${this.connection.connectionId}`
+        )
         .then((res) => {
           if (res.data) {
             this.currentRoom = res.data;
-            this.connection.on("ReloadRoom", (room) => {
-              console.log(room);
-              this.currentRoom = room;
-            });
+            this.subscribeToRoomEvents();
           }
         });
     },
@@ -116,18 +139,9 @@ export default {
       return axios.put(path, null).then((res) => {
         if (res.data) {
           this.currentRoom = res.data;
-          this.connection.on("ReloadRoom", (room) => {
-            console.log(room);
-            this.currentRoom = room;
-          });
+          this.subscribeToRoomEvents();
         }
       });
-      //this.connection.invoke("JoinRoom", parseInt(roomId));
-    },
-    joinResponse() {
-      this.getMyRoom();
-      this.connection.on("ReloadRoom", (room) => (this.currentRoom = room));
-      this.connection.on("GuessWordResponse", this.guessWordResponse);
     },
     guessWordResponse(word, result) {
       this.messages.push({ word, result });
@@ -137,7 +151,7 @@ export default {
     },
     startGame() {
       return axios.put(
-        `http://localhost:7000/api/rooms/${this.currentRoom.id}/start`
+        `http://localhost:7000/api/rooms/${this.currentRoom.roomId}/start`
       );
     },
     getMyRoom() {

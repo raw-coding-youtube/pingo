@@ -21,7 +21,7 @@ namespace Pingo.Controllers
         private readonly ILogger<RoomController> _logger;
 
         public RoomController(
-            RoomManager manager, 
+            RoomManager manager,
             IHubContext<ChatHub> hub,
             ILogger<RoomController> logger
             )
@@ -54,7 +54,7 @@ namespace Pingo.Controllers
             _manager.Rooms.Add(room);
 
             await _chatHub.Groups.AddToGroupAsync(connectionId, room.Id.ToString());
-            
+
             return Ok(new LobbyRoomViewModel(room, userId));
         }
 
@@ -76,13 +76,15 @@ namespace Pingo.Controllers
         {
             var room = _manager.Rooms.FirstOrDefault(x => x.Id == id);
             room.Started = true;
-            await _chatHub.Clients.Group(room.Id.ToString())
-                .SendAsync(
-                    "ReloadRoom",
-                    new LobbyRoomViewModel(room, HttpContext.UserId())
-                );
+            room.DrawingUser = room.Users[0];
 
-            return Ok();
+            await _chatHub.Clients.Group(room.Id.ToString())
+                .SendAsync("GameStarted");
+
+            await _chatHub.Clients.Group(room.Id.ToString())
+                .SendAsync("TurnUpdated", room.DrawingUser);
+
+            return Ok(new LobbyRoomViewModel(room, HttpContext.UserId()));
         }
 
         [HttpPut("{roomid}/join")]
@@ -99,12 +101,10 @@ namespace Pingo.Controllers
 
             await _chatHub.Groups.AddToGroupAsync(connectionId, room.Id.ToString());
 
-            var vm = new LobbyRoomViewModel(room, userId);
-            //await _chatHub.Clients.Caller.SendAsync("JoinResponse");
             await _chatHub.Clients.Group(room.Id.ToString())
-               .SendAsync("ReloadRoom", vm);
+               .SendAsync("UserJoined", userId);
 
-            return Ok(vm);
+            return Ok(new LobbyRoomViewModel(room, userId));
         }
     }
 }

@@ -9,7 +9,7 @@
       @click="toggleClick"
     >
     </canvas>
-    <ToolBarComponent @clearCanvas="clear" @init="initToolbar" />
+    <ToolBarComponent @clearCanvas="clear" @init="initToolbar" v-if="!hideToolBar"/>
   </div>
 </template>
 
@@ -28,6 +28,9 @@ export default {
       tools: null,
     };
   },
+  props: [
+    'hideToolBar'
+  ],
   methods: {
     clear() {
       var ctx = this.$refs.mycanvas.getContext("2d");

@@ -25,6 +25,7 @@ namespace Pingo.Hubs
             return Clients.Group(room.Id.ToString()).SendAsync("ReceiveCoordinate", drawEvent);
             
         }
+
         public Task SendClearEvent()
         {
             var room = _manager.GetRoomByUserId(Context.UserIdentifier);
