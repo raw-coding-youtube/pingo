@@ -21,24 +21,18 @@
 
     <template v-else-if="currentRoom.started">
       <div v-for="user in currentRoom.users" :key="user">
-        <a :class="{ green: currentRoom.drawingUser == user }" href="#">{{ user }}</a>
+        <a :class="{ green: currentRoom.drawingUser == user }" href="#">{{
+          user
+        }}</a>
       </div>
 
-      <div v-if="currentRoom.drawingUser == currentRoom.myUserId">
-        Hide Me If Not My Turn
-      </div>
-     
       <CanvasComponent
         :hideToolBar="currentRoom.drawingUser != currentRoom.myUserId"
         @paint="sendCoordinate"
         @clearCanvas="clearCanvas"
         @InitCanvas="initCanvas"
       />
-      <div v-for="(m, i) in messages" :key="`message-${i}`">
-        <p :class="{ green: m.result }">{{ m.word }}</p>
-      </div>
-      <input v-model="wordGuess" />
-      <button @click="onWordGuess">Send</button>
+      <ChatComponent :connector="connector" :guess="guess" />
     </template>
   </div>
 </template>
@@ -46,11 +40,12 @@
 <script>
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import CanvasComponent from "./components/CanvasComponent";
+import ChatComponent from "./components/ChatComponent";
 import axios from "axios";
 
 export default {
   name: "App",
-  components: { CanvasComponent },
+  components: { CanvasComponent, ChatComponent },
   data() {
     return {
       currentRoom: null,
@@ -59,8 +54,6 @@ export default {
 
       connection: null,
       canvasFunctions: null,
-      wordGuess: "",
-      messages: [],
     };
   },
   async created() {
@@ -84,6 +77,12 @@ export default {
     },
   },
   methods: {
+    connector(fun) {
+      this.connection.on("GuessWordResponse", fun);
+    },
+    guess(func){
+      this.connection.invoke("GuessWord",func);
+    },
     clearCanvas() {
       this.connection.invoke("SendClearEvent");
     },
@@ -110,7 +109,6 @@ export default {
       this.connection.on("TurnUpdated", (userId) => {
         this.currentRoom.drawingUser = userId;
       });
-
     },
     createRoom() {
       return axios
@@ -143,12 +141,7 @@ export default {
         }
       });
     },
-    guessWordResponse(word, result) {
-      this.messages.push({ word, result });
-    },
-    onWordGuess() {
-      this.connection.invoke("GuessWord", this.wordGuess);
-    },
+
     startGame() {
       return axios.put(
         `http://localhost:7000/api/rooms/${this.currentRoom.roomId}/start`

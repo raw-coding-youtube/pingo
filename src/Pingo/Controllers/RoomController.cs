@@ -26,6 +26,7 @@ namespace Pingo.Controllers
             ILogger<RoomController> logger
             )
         {
+            
             _manager = manager;
             _chatHub = hub;
             _logger = logger;
