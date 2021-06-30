@@ -1,59 +1,29 @@
 <template>
   <div>
-    <template v-if="!currentRoom">
-      <form id="roomForm" @submit.prevent="createRoom">
-        <label>Id:</label>
-        <input type="number" v-model="newRoomId" />
+    <RoomCreationComponent v-if="!currentRoom" @createRoom="createRoom" @joinRoom="joinRoom"/>    
 
-        <button type="submit">Create Room</button>
-      </form>
-      <div v-for="room in rooms" :key="room.id">
-        <a href="#" @click="joinRoom(room.id)">{{ room.id }}</a>
-      </div>
-    </template>
+    <RoomLobbyComponent v-else-if="!currentRoom.started" :currentRoom="currentRoom"/>
 
-    <template v-else-if="!currentRoom.started">
-      <div v-for="user in currentRoom.users" :key="user">
-        <a href="#">{{ user }}</a>
-      </div>
-      <button v-if="currentRoom.isAdmin" @click="startGame">Start Game</button>
-    </template>
-
-    <template v-else-if="currentRoom.started">
-      <div v-for="user in currentRoom.users" :key="user">
-        <a :class="{ green: currentRoom.drawingUser == user }" href="#">{{
-          user
-        }}</a>
-      </div>
-
-      <CanvasComponent
-        :hideToolBar="currentRoom.drawingUser != currentRoom.myUserId"
-        @paint="sendCoordinate"
-        @clearCanvas="clearCanvas"
-        @InitCanvas="initCanvas"
-      />
-      <ChatComponent :connector="connector" :guess="guess" />
-    </template>
+    <RoomGameComponent v-else-if="currentRoom.started" :currentRoom="currentRoom"
+    :connection="connection"/>
   </div>
 </template>
 
 <script>
 import { HubConnectionBuilder } from "@microsoft/signalr";
-import CanvasComponent from "./components/CanvasComponent";
-import ChatComponent from "./components/ChatComponent";
+import RoomCreationComponent from "./components/RoomCreationComponent";
+import RoomLobbyComponent from "./components/RoomLobbyComponent";
+import RoomGameComponent from "./components/RoomGameComponent";
 import axios from "axios";
 
 export default {
   name: "App",
-  components: { CanvasComponent, ChatComponent },
+  components: { RoomLobbyComponent, RoomGameComponent, RoomCreationComponent },
   data() {
     return {
       currentRoom: null,
-      newRoomId: 0,
-      rooms: [],
 
       connection: null,
-      canvasFunctions: null,
     };
   },
   async created() {
@@ -63,13 +33,18 @@ export default {
 
     await this.connection.start();
 
+    if (window.location.pathname.indexOf("/join") === 0) {
+      let joinRoomId = window.location.pathname.split("/")[2]; 
+      await this.joinRoom(joinRoomId);
+      window.history.pushState(null, null, "/");
+      return;
+    }
+
     await this.getMyRoom().then((res) => {
       if (res.data) {
         this.joinRoom(res.data.roomId);
       }
     });
-
-    this.loadRooms();
   },
   watch: {
     currentRoom: function (newRoom) {
@@ -77,27 +52,6 @@ export default {
     },
   },
   methods: {
-    connector(fun) {
-      this.connection.on("GuessWordResponse", fun);
-    },
-    guess(func){
-      this.connection.invoke("GuessWord",func);
-    },
-    clearCanvas() {
-      this.connection.invoke("SendClearEvent");
-    },
-    sendCoordinate(data) {
-      this.connection.invoke("SendCoordinate", data);
-    },
-    initCanvas(canvasFunctions) {
-      this.canvasFunctions = canvasFunctions;
-
-      this.connection.on("ReceiveCoordinate", this.canvasFunctions.draw);
-
-      this.connection.on("ReceiveClearEvent", this.canvasFunctions.clear);
-
-      this.connection.invoke("ReDraw");
-    },
     subscribeToRoomEvents() {
       this.connection.on("UserJoined", (userId) => {
         console.log(userId);
@@ -113,7 +67,7 @@ export default {
     createRoom() {
       return axios
         .post(
-          `http://localhost:7000/api/rooms/${this.newRoomId}?connectionId=${this.connection.connectionId}`
+          `http://localhost:7000/api/rooms/?connectionId=${this.connection.connectionId}`
         )
         .then((res) => {
           if (res.data) {
@@ -122,16 +76,7 @@ export default {
           }
         });
     },
-    loadRooms() {
-      return axios
-        .get("http://localhost:7000/api/rooms")
-        .then((res) => {
-          this.rooms = res.data;
-        })
-        .catch((err) => {
-          console.error(err);
-        });
-    },
+    
     joinRoom(roomId) {
       const path = `http://localhost:7000/api/rooms/${roomId}/join?connectionId=${this.connection.connectionId}`;
       return axios.put(path, null).then((res) => {
@@ -140,12 +85,6 @@ export default {
           this.subscribeToRoomEvents();
         }
       });
-    },
-
-    startGame() {
-      return axios.put(
-        `http://localhost:7000/api/rooms/${this.currentRoom.roomId}/start`
-      );
     },
     getMyRoom() {
       return axios.get(`http://localhost:7000/api/rooms/my`).then((res) => {

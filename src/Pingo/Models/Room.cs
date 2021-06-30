@@ -11,7 +11,7 @@ namespace Pingo.Models
             DrawEvents = new List<DrawEvent>();
         }
 
-        public int Id { get; set; }
+        public string Id { get; set; }
         public List<string> Users { get; set; }
         public string Word { get; set; } = "forest";
 

@@ -15,7 +15,7 @@ namespace Pingo.Models
             MyUserId = userId;
         }
 
-        public int RoomId { get; set; }
+        public string RoomId { get; set; }
         public List<string> Users { get; set; }
         public bool Started { get; set; }
         public bool IsAdmin { get; set; }

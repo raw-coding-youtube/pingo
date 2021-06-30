@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -26,7 +27,6 @@ namespace Pingo.Controllers
             ILogger<RoomController> logger
             )
         {
-            
             _manager = manager;
             _chatHub = hub;
             _logger = logger;
@@ -38,17 +38,12 @@ namespace Pingo.Controllers
             return Ok(_manager.Rooms);
         }
 
-        [HttpGet("{id}")]
-        public IActionResult GetRoom(int id)
-        {
-            return Ok(_manager.Rooms.FirstOrDefault(x => x.Id == id));
-        }
-
-        [HttpPost("{id}")]
-        public async Task<IActionResult> Create(int id, string connectionId)
+        [HttpPost]
+        public async Task<IActionResult> Create(string connectionId)
         {
             var userId = HttpContext.UserId();
 
+            var id = Guid.NewGuid().ToString();
             Room room = new Room { Id = id };
 
             room.Users.Add(userId);
@@ -73,7 +68,7 @@ namespace Pingo.Controllers
         }
 
         [HttpPut("{id}/start")]
-        public async Task<IActionResult> StartGameAsync(int id)
+        public async Task<IActionResult> StartGameAsync(string id)
         {
             var room = _manager.Rooms.FirstOrDefault(x => x.Id == id);
             room.Started = true;
@@ -89,7 +84,7 @@ namespace Pingo.Controllers
         }
 
         [HttpPut("{roomid}/join")]
-        public async Task<IActionResult> JoinRoom(int roomId, string connectionId)
+        public async Task<IActionResult> JoinRoom(string roomId, string connectionId)
         {
             _logger.LogInformation($"Room id: {roomId}, ConnectionID: {connectionId}");
             var room = _manager.Rooms.FirstOrDefault(x => x.Id == roomId);
@@ -98,12 +93,10 @@ namespace Pingo.Controllers
             if (!room.Users.Any(x => x == userId))
             {
                 room.Users.Add(userId);
+                await _chatHub.Clients.Group(room.Id.ToString()).SendAsync("UserJoined", userId);
             }
 
             await _chatHub.Groups.AddToGroupAsync(connectionId, room.Id.ToString());
-
-            await _chatHub.Clients.Group(room.Id.ToString())
-               .SendAsync("UserJoined", userId);
 
             return Ok(new LobbyRoomViewModel(room, userId));
         }

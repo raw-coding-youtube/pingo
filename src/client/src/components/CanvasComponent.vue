@@ -9,7 +9,11 @@
       @click="toggleClick"
     >
     </canvas>
-    <ToolBarComponent @clearCanvas="clear" @init="initToolbar" v-if="!hideToolBar"/>
+    <ToolBarComponent
+      @clearCanvas="clear"
+      @init="initToolbar"
+      v-if="!hideToolBar"
+    />
   </div>
 </template>
 
@@ -28,9 +32,7 @@ export default {
       tools: null,
     };
   },
-  props: [
-    'hideToolBar'
-  ],
+  props: ["hideToolBar", "initCanvas"],
   methods: {
     clear() {
       var ctx = this.$refs.mycanvas.getContext("2d");
@@ -81,7 +83,7 @@ export default {
   },
   mounted() {
     let canvas = this.$refs.mycanvas;
-    this.$emit("InitCanvas", {
+    let canvasFunctions = {
       draw({ xStartPosition, yStartPosition, toX, toY, color, brushSize }) {
         var ctx = canvas.getContext("2d");
         ctx.lineWidth = brushSize;
@@ -97,7 +99,9 @@ export default {
         var ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
       },
-    });
+    };
+
+    this.initCanvas(canvasFunctions);
   },
 };
 </script>
